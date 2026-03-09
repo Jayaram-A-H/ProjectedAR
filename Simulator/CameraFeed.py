@@ -4,8 +4,12 @@ import cv2
 import numpy as np
 import threading
 
+frames = {
+    "Cam1": None,
+    "Cam2": None
+}
 
-def receive_camera(port, window_name):
+def receive_camera(port, name):
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", port))
@@ -42,15 +46,22 @@ def receive_camera(port, window_name):
         )
 
         if frame is not None:
-            cv2.imshow(window_name, frame)
-
-        if cv2.waitKey(1) == 27:
-            break
+            frames[name] = frame
 
 
-threading.Thread(target=receive_camera, args=(4000,"Cam1")).start()
-threading.Thread(target=receive_camera, args=(4001,"Cam2")).start()
+threading.Thread(target=receive_camera, args=(4000,"Cam1"), daemon=True).start()
+threading.Thread(target=receive_camera, args=(4001,"Cam2"), daemon=True).start()
+
 
 while True:
+
+    if frames["Cam1"] is not None:
+        cv2.imshow("Cam1", frames["Cam1"])
+
+    if frames["Cam2"] is not None:
+        cv2.imshow("Cam2", frames["Cam2"])
+
     if cv2.waitKey(1) == 27:
         break
+
+cv2.destroyAllWindows()
