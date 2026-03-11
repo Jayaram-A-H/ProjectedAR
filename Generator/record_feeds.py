@@ -52,16 +52,39 @@ def receive_camera(port, name):
 threading.Thread(target=receive_camera, args=(4000,"Cam1"), daemon=True).start()
 threading.Thread(target=receive_camera, args=(4001,"Cam2"), daemon=True).start()
 
-
+writers = {
+    "Cam1": None,
+    "Cam2": None
+}
 while True:
 
     if frames["Cam1"] is not None:
+        frame = frames["Cam1"]
+
+        if writers["Cam1"] is None:
+            h, w, _ = frame.shape
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            writers["Cam1"] = cv2.VideoWriter("cam1.mp4", fourcc, 30, (w, h))
+
+        writers["Cam1"].write(frame)
+        cv2.imshow("Cam1", frame)
         cv2.imshow("Cam1", frames["Cam1"])
 
     if frames["Cam2"] is not None:
+        frame = frames["Cam2"]
+
+        if writers["Cam2"] is None:
+            h, w, _ = frame.shape
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            writers["Cam2"] = cv2.VideoWriter("cam2.mp4", fourcc, 30, (w, h))
+
+        writers["Cam2"].write(frame)
         cv2.imshow("Cam2", frames["Cam2"])
 
     if cv2.waitKey(1) == 27:
         break
+for w in writers.values():
+    if w is not None:
+        w.release()
 
 cv2.destroyAllWindows()
