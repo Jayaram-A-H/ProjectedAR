@@ -25,3 +25,9 @@ Check no of features possible using each of the above ways, possible match, how 
 
 this it the output of facial landmark detection given by mediapipe, we can use these data from both the frames and use triangulation to get the 3d model.
 
+## First iteration of Generating 3d model
+
+![Alt text](../Assets/3d_pc.png)
+
+
+
