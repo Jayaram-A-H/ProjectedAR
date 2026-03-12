@@ -20,4 +20,8 @@ In order to do triangulation and get 3d points, its necessary to identify featur
 ## Todo:Test case: 
 Check no of features possible using each of the above ways, possible match, how many are accurate.
 
+## Facial Landmark detection
+![Alt text](../Assets/facial_landmark.png)
+
+this it the output of facial landmark detection given by mediapipe, we can use these data from both the frames and use triangulation to get the 3d model.
 
