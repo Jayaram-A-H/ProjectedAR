@@ -1,127 +1,211 @@
 import cv2
 import numpy as np
+import mediapipe as mp
+import Camera_Calibration as cc
 
 
 import open3d as o3d
 import numpy as np
 
+#@markdown We implemented some functions to visualize the face landmark detection results. <br/> Run the following cell to activate the functions.
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+from mediapipe.tasks.python.vision import drawing_utils
+from mediapipe.tasks.python.vision import drawing_styles
+import numpy as np
+import matplotlib.pyplot as plt
+import time
 
-# ---- Camera intrinsic matrices (from calibration) ----
-K1 = np.array([[700, 0, 320],
-               [0, 700, 240],
-               [0,   0,   1]])
+def draw_landmarks_on_image(rgb_image, detection_result):
+  face_landmarks_list = detection_result.face_landmarks
+  annotated_image = np.copy(rgb_image)
 
-K2 = np.array([[700, 0, 320],
-               [0, 700, 240],
-               [0,   0,   1]])
+  # Loop through the detected faces to visualize.
+  for idx in range(len(face_landmarks_list)):
+    face_landmarks = face_landmarks_list[idx]
 
-# ---- Relative pose between cameras (from stereo calibration) ----
-R = np.array([[1,0,0],
-              [0,1,0],
-              [0,0,1]])
+    # Draw the face landmarks.
 
-T = np.array([[0.1,0,0]]).T  # baseline between cameras
 
-# ---- Projection matrices ----
-P1 = K1 @ np.hstack((np.eye(3), np.zeros((3,1))))
-P2 = K2 @ np.hstack((R, T))
+    drawing_utils.draw_landmarks(
+        image=annotated_image,
+        landmark_list=face_landmarks,
+        connections=vision.FaceLandmarksConnections.FACE_LANDMARKS_TESSELATION,
+        landmark_drawing_spec=None,
+        connection_drawing_spec=drawing_styles.get_default_face_mesh_tesselation_style())
+    drawing_utils.draw_landmarks(
+        image=annotated_image,
+        landmark_list=face_landmarks,
+        connections=vision.FaceLandmarksConnections.FACE_LANDMARKS_CONTOURS,
+        landmark_drawing_spec=None,
+        connection_drawing_spec=drawing_styles.get_default_face_mesh_contours_style())
+    drawing_utils.draw_landmarks(
+        image=annotated_image,
+        landmark_list=face_landmarks,
+        connections=vision.FaceLandmarksConnections.FACE_LANDMARKS_LEFT_IRIS,
+          landmark_drawing_spec=None,
+          connection_drawing_spec=drawing_styles.get_default_face_mesh_iris_connections_style())
+    drawing_utils.draw_landmarks(
+        image=annotated_image,
+        landmark_list=face_landmarks,
+        connections=vision.FaceLandmarksConnections.FACE_LANDMARKS_RIGHT_IRIS,
+          landmark_drawing_spec=None,
+          connection_drawing_spec=drawing_styles.get_default_face_mesh_iris_connections_style())
 
-# ---- Read camera frames ----
-cap1 = cv2.VideoCapture('cam1.mp4')
-cap2 = cv2.VideoCapture('cam2.mp4')
+  return annotated_image
 
-orb = cv2.ORB_create()
+def plot_face_blendshapes_bar_graph(face_blendshapes):
+  # Extract the face blendshapes category names and scores.
+  face_blendshapes_names = [face_blendshapes_category.category_name for face_blendshapes_category in face_blendshapes]
+  face_blendshapes_scores = [face_blendshapes_category.score for face_blendshapes_category in face_blendshapes]
+  # The blendshapes are ordered in decreasing score value.
+  face_blendshapes_ranks = range(len(face_blendshapes_names))
 
-while True:
-    ret1, frame1 = cap1.read()
-    ret2, frame2 = cap2.read()
+  fig, ax = plt.subplots(figsize=(12, 12))
+  bar = ax.barh(face_blendshapes_ranks, face_blendshapes_scores, label=[str(x) for x in face_blendshapes_ranks])
+  ax.set_yticks(face_blendshapes_ranks, face_blendshapes_names)
+  ax.invert_yaxis()
 
-    if not ret1 or not ret2:
+  # Label each bar with values
+  for score, patch in zip(face_blendshapes_scores, bar.patches):
+    plt.text(patch.get_x() + patch.get_width(), patch.get_y(), f"{score:.4f}", va="top")
+
+  ax.set_xlabel('Score')
+  ax.set_title("Face Blendshapes")
+  plt.tight_layout()
+  plt.show()
+
+
+# STEP 1: Import the necessary modules.
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
+# STEP 2: Create an FaceLandmarker object.
+base_options = python.BaseOptions(model_asset_path='face_landmarker.task')
+options = vision.FaceLandmarkerOptions(base_options=base_options,
+                                       output_face_blendshapes=True,
+                                       output_facial_transformation_matrixes=True,
+                                       num_faces=1)
+detector = vision.FaceLandmarker.create_from_options(options)
+
+# STEP 3: Load the input image.
+
+'''
+
+cap = cv2.VideoCapture("../cam1.mp4")
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    
+
+    if not ret:
         break
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+    # Convert to MediaPipe Image
+    mp_image = mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=rgb_frame
+    )  # STEP 4: Detect face landmarks from the input image.'''
 
-    # Detect features
-    kp1, des1 = orb.detectAndCompute(gray1, None)
-    kp2, des2 = orb.detectAndCompute(gray2, None)
 
-    # Match features
-    # bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    # matches = bf.match(des1, des2)
+ccc=cc.Camera_Calib()
+P1,P2=ccc.P1,ccc.P2
 
-    bf = cv2.BFMatcher()
+vis = o3d.visualization.Visualizer()
+vis.create_window()
 
-    matches = bf.knnMatch(des1, des2, k=2)
+pcd = o3d.geometry.PointCloud()
 
-    good_matches = []
-    for m, n in matches:
-        if m.distance < 0.75 * n.distance:
-            good_matches.append(m)
+# IMPORTANT: add geometry once
+vis.add_geometry(pcd)
 
-    good_matches = sorted(good_matches, key=lambda x: x.distance)
+# make points visible
+vis.get_render_option().point_size = 10
 
-    good_matches = good_matches[:50]
-    match_img = cv2.drawMatches(
-    gray1, kp1,
-    gray2, kp2,
-    good_matches[:50], None,
-    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
-    )
+# optional coordinate frame
+frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)
+vis.add_geometry(frame)
 
-    cv2.imshow("Feature Matches", match_img)
-    pts1 = []
-    pts2 = []
+vis.get_render_option().point_size = 8
 
-    for m in good_matches[:50]:
-        pts1.append(kp1[m.queryIdx].pt)
-        pts2.append(kp2[m.trainIdx].pt)
 
-    pts1 = np.array(pts1).T
-    pts2 = np.array(pts2).T
-    img1_kp = cv2.drawKeypoints(
-    gray1, kp1, None,
-    flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS
-    )
+for j in range(1,1080):
 
-    img2_kp = cv2.drawKeypoints(
-        gray2, kp2, None,
-        flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS
-    )
+    image = mp.Image.create_from_file(f"cam1_frames/frame_{j:05}.png")
+    image2 = mp.Image.create_from_file(f"cam2_frames/frame_{j:05}.png")
+    detection_result = detector.detect(image)
+    detection_result2 = detector.detect(image2)
+    # print(detection_result.face_landmarks[0][1])
+    coord1=[]
+    coord2=[]
+    if(detection_result.face_landmarks==[] or detection_result2.face_landmarks==[]):
+        continue
+    for i in detection_result.face_landmarks[0]:
+        coord1.append([i.x *image.width,i.y *image.height])
+    for i in detection_result2.face_landmarks[0]:
+        coord2.append([i.x *image.width,i.y *image.height])
 
-    cv2.imshow("Frame 1 Keypoints", img1_kp)
-    cv2.imshow("Frame 2 Keypoints", img2_kp)
+    annotated_image = draw_landmarks_on_image(image.numpy_view(), detection_result)
+    annotated_image2 = draw_landmarks_on_image(image2.numpy_view(), detection_result2)
+    cv2.imshow("fraem",cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
+    cv2.imshow("fraem2",cv2.cvtColor(annotated_image2, cv2.COLOR_RGB2BGR))
+    # Convert to numpy arrays
+    pts1 = np.array(coord1, dtype=np.float32).T
+    pts2 = np.array(coord2, dtype=np.float32).T
 
-    # ---- Triangulation ----
+    # Triangulate
     points_4d = cv2.triangulatePoints(P1, P2, pts1, pts2)
 
     # Convert homogeneous → 3D
-    points_3d = points_4d[:3] / points_4d[3]
-    
-    points = points_3d.T
+    points_3d = (points_4d[:3] / points_4d[3]).T
+    # print(points_3d)
+    # points_3d = [[0.1,0.1,0.1],[0.2,0.2,0.2],[0.3,0.3,0.3],[0,0,0]]
+    # points_3d = np.array(points_3d)
+    # Optional: remove invalid points
+    points_3d = points_3d[np.isfinite(points_3d).all(axis=1)]
 
-    # pcd = o3d.geometry.PointCloud()
-    # pcd.points = o3d.utility.Vector3dVector(points)
+    print(pcd)
+    # Update point cloud
+    pcd.points = o3d.utility.Vector3dVector(points_3d)
+    print(pcd.points)
+    # Color points red
+    # colors = np.tile(np.array([[1,0,0]]), (len(points_3d),1))
+    # pcd.colors = o3d.utility.Vector3dVector(colors)
 
-    #o3d.visualization.draw_geometries([pcd])
+    # Update Open3D windo
+    # for i in range(1000):
+    vis.update_geometry(pcd)
+    vis.poll_events()
+    vis.update_renderer()
 
-    print("3D Points:\n", points_3d.T[:5])
+    time.sleep(0.03)
+
+    # # ---- Triangulation ----
+    # points_4d = cv2.triangulatePoints(P1, P2, pts1, pts2)
+
+    # # Convert homogeneous → 3D
+
+    # points_3d = points_4d[:3] / points_4d[3]
+
+    # points = points_3d.T
+
+    # # pcd = o3d.geometry.PointCloud()
+    # # pcd.points = o3d.utility.Vector3dVector(points)
+
+    # #o3d.visualization.draw_geometries([pcd])
+
+    # print("3D Points:\n", points_3d.T[:5])
 
     # cv2.imshow("cam1", frame1)
     # cv2.imshow("cam2", frame2)
-    while True:
-        key = cv2.waitKey(0) & 0xFF
-        if key == ord('n'):
-            break
-        elif key == ord('q'):
-            cap1.release()
-            cap2.release()
-            cv2.destroyAllWindows()
-            exit()
+        
 
-    # if cv2.waitKey(1) == 27:
-    #     break
+    cv2.waitKey(1)
 
-cap1.release()
-cap2.release()
+detector.close()
+# cap.release()
 cv2.destroyAllWindows()
+
