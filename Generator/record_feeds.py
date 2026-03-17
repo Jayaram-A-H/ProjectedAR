@@ -64,7 +64,7 @@ while True:
         if writers["Cam1"] is None:
             h, w, _ = frame.shape
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            writers["Cam1"] = cv2.VideoWriter("cam1_face.mp4", fourcc, 30, (w, h))
+            writers["Cam1"] = cv2.VideoWriter("cam1_face1.mp4", fourcc, 30, (w, h))
 
         writers["Cam1"].write(frame)
         cv2.imshow("Cam1", frame)
@@ -76,7 +76,7 @@ while True:
         if writers["Cam2"] is None:
             h, w, _ = frame.shape
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            writers["Cam2"] = cv2.VideoWriter("cam2_face.mp4", fourcc, 30, (w, h))
+            writers["Cam2"] = cv2.VideoWriter("cam2_face1.mp4", fourcc, 30, (w, h))
 
         writers["Cam2"].write(frame)
         cv2.imshow("Cam2", frames["Cam2"])
