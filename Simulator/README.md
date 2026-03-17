@@ -8,3 +8,8 @@ Then run the CameraFeed.py to the camera feeds, that you will get through tcp st
 ![Alt text](../Assets/CameraFeeds.png)
 
 Use this stream to do Augmented reality on it.
+
+## How to Use:
+ * Run the My Project.exe to start the simulator,
+ * and run the CameraFeed.py script to view the camera feed,( if u dont have the dependencies, run "./.venv/bin/activate" in the terminal, and run the python file, this virtual environment should have all the dependencies installed.)
+
