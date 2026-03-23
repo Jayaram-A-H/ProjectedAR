@@ -22,27 +22,13 @@ threading.Thread(target=feed.receive_camera, args=(4000,"Cam1"), daemon=True).st
 threading.Thread(target=feed.receive_camera, args=(4001,"Cam2"), daemon=True).start()
 
 class Camera_Calib():
-    def __init__(self):                
-        K = np.array([
-            [1000, 0, 320],
-            [0, 1000, 240],
-            [0, 0, 1]
-        ])
-        
-        self.s_img = socket.socket()
-        self.s_img.connect(("127.0.0.1", 5005))
-        
-        self.s_obj = socket.socket()
-        self.s_obj.connect(("127.0.0.1", 5006))
-
-        # Camera 1 projection matrix
-        self.P1 = K @ np.hstack((np.eye(3), np.zeros((3,1))))
-
-        # Camera 2 projection matrix (shifted along X)
-        R = np.eye(3)
-        t = np.array([[0.1], [0], [0]])
-
-        self.P2 = K @ np.hstack((R, t))
+    def __init__(self,load=True):   
+        if not load:
+            self.s_img = socket.socket()
+            self.s_img.connect(("127.0.0.1", 5005))
+            
+            self.s_obj = socket.socket()
+            self.s_obj.connect(("127.0.0.1", 5006))
 
     def move_obj(self, obj_no, posn):
         msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])}\n"
@@ -134,6 +120,21 @@ class Camera_Calib():
 
         return camera_matrix,dist_coeffs
     
+    
+    def load_intrinsics(self, camno):
+        filename = f"camera_intrinsics{camno}.json"
+        
+        with open(filename, "r") as f:
+            data = json.load(f)
+
+        # Convert lists back to numpy arrays
+        camera_matrix = np.array(data["camera_matrix"])
+        dist_coeffs = np.array(data["distortion_coefficients"])
+
+        print(f"Loaded intrinsics from {filename}")
+        
+        return camera_matrix, dist_coeffs
+    
     def save_intrinsics(self,camera_matrix,dist_coeffs,camno):
         data = {
             "camera_matrix": camera_matrix.tolist(),
@@ -156,18 +157,28 @@ class Camera_Calib():
 
     
     def get_vals(self):
+        K1,_ = self.load_intrinsics(camno=1)
+        K2,_ = self.load_intrinsics(camno=2)
+
+        self.P1 = K1 @ np.hstack((np.eye(3), np.zeros((3,1))))
+
+        # Camera 2 projection matrix (shifted along X)
+        R = np.eye(3)
+        t = np.array([[1], [0], [0]])
+
+        self.P2 = K2 @ np.hstack((R, t))
         return self.P1, self.P2
 
-cc= Camera_Calib()
-# cc.calib()
+# cc= Camera_Calib()
+# # cc.calib()
 
-t1 = threading.Thread(target=cc.disp)
-t2 = threading.Thread(target=cc.calib)
+# t1 = threading.Thread(target=cc.disp)
+# t2 = threading.Thread(target=cc.calib)
 
-t1.start()
-t2.start()
+# t1.start()
+# t2.start()
 
-t1.join()
-t2.join()
+# t1.join()
+# t2.join()
 
-print("donnne")
+# print("donnne")
