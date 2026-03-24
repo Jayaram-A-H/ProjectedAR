@@ -27,7 +27,7 @@ class ProjectedAR:
 
         threading.Thread(target=self.feed.receive_camera, args=(4000,"Cam1"), daemon=True).start()
         threading.Thread(target=self.feed.receive_camera, args=(4001,"Cam2"), daemon=True).start()
-
+        self.t=True
         
         self.vis = o3d.visualization.Visualizer()
         self.vis.create_window()
@@ -63,6 +63,15 @@ class ProjectedAR:
                                             num_faces=1)
         detector = vision.FaceLandmarker.create_from_options(options)
         return detector
+
+
+    def rotate_obj(self):
+        ang=180
+        while(self.t==True):
+            msg= f"move 0.5 -2.5 1.1 0 {ang} 0 1.5"
+            self.s_obj.sendall(msg.encode())
+            ang+=4
+            time.sleep(0.1) 
     
     def init_posn(self):
         # msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])} {float(posn[6])}\n"
@@ -117,7 +126,7 @@ class ProjectedAR:
             coord2=[]
             if(detection_result.face_landmarks==[] or detection_result2.face_landmarks==[]):
                 print("no face")
-                self.vis.update_geometry(pcd)
+                self.vis.update_geometry(self.pcd)
                 self.vis.poll_events()
                 self.vis.update_renderer()
                 continue
@@ -130,8 +139,8 @@ class ProjectedAR:
             annotated_image2 = draw_mesh.draw_landmarks_on_image(image2.numpy_view(), detection_result2)
             cv2.imshow("fraem",cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
             cv2.imshow("fraem2",cv2.cvtColor(annotated_image2, cv2.COLOR_RGB2BGR))
-            pcd=self.Triangulate(coord1=coord1,coord2=coord2,pcd=self.pcd,P1=P1,P2=P2)
-            self.vis.update_geometry(pcd)
+            self.pcd=self.Triangulate(coord1=coord1,coord2=coord2,pcd=self.pcd,P1=P1,P2=P2)
+            self.vis.update_geometry(self.pcd)
             self.vis.poll_events()
             self.vis.update_renderer()
 
@@ -158,10 +167,15 @@ class ProjectedAR:
                 break
 
 a=ProjectedAR()
-a.run()
-# t1 = threading.Thread(target=a.disp)
-# t2 = threading.Thread(target=a.run)
+# a.run()
 
+
+t2 = threading.Thread(target=a.rotate_obj, daemon=True)
+t2.start()
+
+# t1 = threading.Thread(target=a.run)
+# t2 = threading.Thread(target=a.rotate_obj)
+a.run()
 # t1.start()
 # t2.start()
 
