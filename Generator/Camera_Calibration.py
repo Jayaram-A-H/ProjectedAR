@@ -16,14 +16,14 @@ import json
 # Example camera matrices
 # (normally from calibration)
 # -----------------------------
-feed=Feed()
-
-threading.Thread(target=feed.receive_camera, args=(4000,"Cam1"), daemon=True).start()
-threading.Thread(target=feed.receive_camera, args=(4001,"Cam2"), daemon=True).start()
 
 class Camera_Calib():
     def __init__(self,load=True):   
         if not load:
+            self.feed=Feed()
+            threading.Thread(target=self.feed.receive_camera, args=(4000,"Cam1"), daemon=True).start()
+            threading.Thread(target=self.feed.receive_camera, args=(4001,"Cam2"), daemon=True).start()
+
             self.s_img = socket.socket()
             self.s_img.connect(("127.0.0.1", 5005))
             
@@ -31,7 +31,7 @@ class Camera_Calib():
             self.s_obj.connect(("127.0.0.1", 5006))
 
     def move_obj(self, obj_no, posn):
-        msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])}\n"
+        msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])} {float(posn[6])}\n"
         if obj_no==1:
             self.s_img.sendall(msg.encode()) # move right
             time.sleep(1)
@@ -40,28 +40,28 @@ class Camera_Calib():
             time.sleep(0.1) 
     
     def save_frames(self,camno):
-        self.move_obj(2,[0,0,-1,0,0,0])
-        arr=[[0,0,0.3,0,0,0],[0,0,0.4,15,0,0],[0,0,0.4,-15,0,0],[0,0,0.4,30,0,0],[0,0,0.4,-30,0,0],[0,0,0.4,0,15,0],[0,0,0.4,0,-15,0],[0,0,0.4,0,30,0],[0,0,0.4,0,-30,0],
-             [0.1,0,0.3,0,0,0],[0.1,0,0.35,15,0,0],[0.1,0,0.35,-15,0,0],[0.1,0,0.35,30,0,0],[0.1,0,0.35,-30,0,0],[0.1,0,0.35,0,15,0],[0.1,0,0.35,0,-15,0],[0.1,0,0.35,0,30,0],[0.1,0,0.35,0,-30,0]]
-        arr2=[[1,0,0.3,0,0,0],[1,0,0.4,15,0,0],[1,0,0.4,-15,0,0],[1,0,0.4,30,0,0],[1,0,0.4,-30,0,0],[1,0,0.4,0,15,0],[1,0,0.4,0,-15,0],[1,0,0.4,0,30,0],[1,0,0.4,0,-30,0],
-             [1.1,0,0.3,0,0,0],[1.1,0,0.35,15,0,0],[1.1,0,0.35,-15,0,0],[1.1,0,0.35,30,0,0],[1.1,0,0.35,-30,0,0],[1.1,0,0.35,0,15,0],[1.1,0,0.35,0,-15,0],[1.1,0,0.35,0,30,0],[1.1,0,0.35,0,-30,0]]
+        self.move_obj(2,[0,0,-1,0,0,0,1])
+        arr=[[0,0,0.3,0,0,0,1],[0,0,0.4,15,0,0,1],[0,0,0.4,-15,0,0,1],[0,0,0.4,30,0,0,1],[0,0,0.4,-30,0,0,1],[0,0,0.4,0,15,0,1],[0,0,0.4,0,-15,0,1],[0,0,0.4,0,30,0,1],[0,0,0.4,0,-30,0,1],
+             [0.1,0,0.3,0,0,0,1],[0.1,0,0.35,15,0,0,1],[0.1,0,0.35,-15,0,0,1],[0.1,0,0.35,30,0,0,1],[0.1,0,0.35,-30,0,0,1],[0.1,0,0.35,0,15,0,1],[0.1,0,0.35,0,-15,0,1],[0.1,0,0.35,0,30,0,1],[0.1,0,0.35,0,-30,0,1],1]
+        arr2=[[1,0,0.3,0,0,0,1],[1,0,0.4,15,0,0,1],[1,0,0.4,-15,0,0,1],[1,0,0.4,30,0,0,1],[1,0,0.4,-30,0,0,1],[1,0,0.4,0,15,0,1],[1,0,0.4,0,-15,0,1],[1,0,0.4,0,30,0,1],[1,0,0.4,0,-30,0,1],
+             [1.1,0,0.3,0,0,0,1],[1.1,0,0.35,15,0,0,1],[1.1,0,0.35,-15,0,0,1],[1.1,0,0.35,30,0,0,1],[1.1,0,0.35,-30,0,0,1],[1.1,0,0.35,0,15,0,1],[1.1,0,0.35,0,-15,0,1],[1.1,0,0.35,0,30,0,1],[1.1,0,0.35,0,-30,0,1]]
         
         i=0
         if camno==2: 
             arr=arr2
         for a in arr:
             self.move_obj(1,a)
-            if feed.frames[f"Cam{camno}"] is not None:
-                cv2.imshow(f"Cam{camno}", feed.frames[f"Cam{camno}"])
-                cv2.imwrite(f"Calib_img{camno}/frame{i}.jpg", feed.frames[f"Cam{camno}"])
+            if self.feed.frames[f"Cam{camno}"] is not None:
+                cv2.imshow(f"Cam{camno}", self.feed.frames[f"Cam{camno}"])
+                cv2.imwrite(f"Calib_img{camno}/frame{i}.jpg", self.feed.frames[f"Cam{camno}"])
                 print("written")
                 i+=1
     def disp(self):        
         while True:
-            if feed.frames["Cam1"] is not None:
-                cv2.imshow("Cam1", feed.frames["Cam1"])
-            if feed.frames["Cam2"] is not None:
-                cv2.imshow("Cam2", feed.frames["Cam2"])
+            if self.feed.frames["Cam1"] is not None:
+                cv2.imshow("Cam1", self.feed.frames["Cam1"])
+            if self.feed.frames["Cam2"] is not None:
+                cv2.imshow("Cam2", self.feed.frames["Cam2"])
 
             if cv2.waitKey(1) == 27:
                 break

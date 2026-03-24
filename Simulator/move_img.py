@@ -13,6 +13,6 @@ while True:
     for xx in x:
         x[i]=float(xx)
         i+=1
-    msg = f"move {float(x[0])} {float(x[1])} {float(x[2])} {float(x[3])} {float(x[4])} {float(x[5])}\n"
+    msg = f"move {float(x[0])} {float(x[1])} {float(x[2])} {float(x[3])} {float(x[4])} {float(x[5])} 1\n"
     s.sendall(msg.encode()) # move right
     time.sleep(0.1)

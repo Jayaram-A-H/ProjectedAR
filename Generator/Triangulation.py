@@ -2,9 +2,11 @@ import cv2
 import numpy as np
 import Camera_Calibration as cc
 import open3d as o3d
+from CameraFeed import Feed
 import numpy as np
 #@markdown We implemented some functions to visualize the face landmark detection results. <br/> Run the following cell to activate the functions.
 import mediapipe as mp
+import socket
 import Mediapipe_landmarks as draw_mesh
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -12,12 +14,20 @@ from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
 import numpy as np
 import matplotlib.pyplot as plt
+import threading
 import time
 
 
+print("ohhhh")
 class ProjectedAR:
 
     def __init__(self):
+                
+        self.feed=Feed()
+
+        threading.Thread(target=self.feed.receive_camera, args=(4000,"Cam1"), daemon=True).start()
+        threading.Thread(target=self.feed.receive_camera, args=(4001,"Cam2"), daemon=True).start()
+
         
         self.vis = o3d.visualization.Visualizer()
         self.vis.create_window()
@@ -26,6 +36,11 @@ class ProjectedAR:
         frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)
         self.vis.add_geometry(frame)
         self.vis.get_render_option().point_size = 8
+        self.s_img = socket.socket()
+        self.s_img.connect(("127.0.0.1", 5005))
+        
+        self.s_obj = socket.socket()
+        self.s_obj.connect(("127.0.0.1", 5006))
 
     def Triangulate(self,coord1,coord2,pcd,P1,P2):
         
@@ -48,25 +63,37 @@ class ProjectedAR:
                                             num_faces=1)
         detector = vision.FaceLandmarker.create_from_options(options)
         return detector
+    
+    def init_posn(self):
+        # msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])} {float(posn[6])}\n"
+        msg ="move 0 0 1 0 0 0 0.2"
+        self.s_img.sendall(msg.encode()) # move right
+        time.sleep(1)
+        msg= "move 0.5 -2.5 1.1 0 -180 0 1.5"
+        self.s_obj.sendall(msg.encode())
+        time.sleep(0.1) 
+
 
     def run(self):
         # STEP 2: Create an FaceLandmarker object.
+        self.init_posn()
         detector= self.get_detector()
+        print(self.feed)
 
         # STEP 3: Load the input image.
 
-        ccc=cc.Camera_Calib()
+        ccc=cc.Camera_Calib(load=True)
         P1,P2=ccc.get_vals()
 
 
-        cap1 = cv2.VideoCapture("../Assets/cam1_face.mp4")
-        cap2 = cv2.VideoCapture("../Assets/cam2_face.mp4")
+        # cap1 = cv2.VideoCapture("../Assets/cam1_face.mp4")
+        # cap2 = cv2.VideoCapture("../Assets/cam2_face.mp4")
         while(1):
-            ret1, frame1 = cap1.read()
-            ret2, frame2 = cap2.read()
+            frame1,frame2=self.feed.frames["Cam1"],self.feed.frames["Cam2"]
 
-            if not ret1 or not ret2:
-                break
+            if  frame1 is None or frame2 is None:
+                print("no frame")
+                continue
 
 
             frame1_rgb = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB)
@@ -85,14 +112,14 @@ class ProjectedAR:
             # image2 = mp.Image.create_from_file(f"cam2_frames/frame_{j:05}.png")
             detection_result = detector.detect(image)
             detection_result2 = detector.detect(image2)
-
-
-
             # print(detection_result.face_landmarks[0][1])
             coord1=[]
             coord2=[]
             if(detection_result.face_landmarks==[] or detection_result2.face_landmarks==[]):
                 print("no face")
+                self.vis.update_geometry(pcd)
+                self.vis.poll_events()
+                self.vis.update_renderer()
                 continue
             for i in detection_result.face_landmarks[0]:
                 coord1.append([i.x *image.width,i.y *image.height])
@@ -112,11 +139,31 @@ class ProjectedAR:
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
 
-        cap1.release()
-        cap2.release()
+        # cap1.release()
+        # cap2.release()
         detector.close()
         # cap.release()
         cv2.destroyAllWindows()
 
+    def disp(self):        
+        while True:
+            print("disp")
+            if self.feed.frames["Cam1"] is not None:
+                print("halalla")
+                cv2.imshow("Cam1", self.feed.frames["Cam1"])
+            if self.feed.frames["Cam2"] is not None:
+                cv2.imshow("Cam2", self.feed.frames["Cam2"])
+
+            if cv2.waitKey(1) == 27:
+                break
+
 a=ProjectedAR()
 a.run()
+# t1 = threading.Thread(target=a.disp)
+# t2 = threading.Thread(target=a.run)
+
+# t1.start()
+# t2.start()
+
+# t1.join()
+# t2.join()
