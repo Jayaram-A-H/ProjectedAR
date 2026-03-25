@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import threading
 import time
-
+import json
 
 print("ohhhh")
 class ProjectedAR:
@@ -41,6 +41,9 @@ class ProjectedAR:
         
         self.s_obj = socket.socket()
         self.s_obj.connect(("127.0.0.1", 5006))
+
+        self.s_pcd = socket.socket()
+        self.s_pcd.connect(("127.0.0.1", 5009))
 
     def Triangulate(self,coord1,coord2,pcd,P1,P2):
         
@@ -70,8 +73,17 @@ class ProjectedAR:
         while(self.t==True):
             msg= f"move 0.5 -2.5 1.1 0 {ang} 0 1.5"
             self.s_obj.sendall(msg.encode())
-            ang+=4
-            time.sleep(0.1) 
+            ang+=10
+            time.sleep(0.5)
+
+    def populator(self,arr):
+        coords=[]
+        for i in arr:
+            coords.append({"x":-1*i[0], "y": i[1], "z": -1*i[2]})
+        
+        data = json.dumps({"points": coords}) + "\n"  # newline = message end
+        self.s_pcd.sendall(data.encode())
+
     
     def init_posn(self):
         # msg = f"move {float(posn[0])} {float(posn[1])} {float(posn[2])} {float(posn[3])} {float(posn[4])} {float(posn[5])} {float(posn[6])}\n"
@@ -140,6 +152,7 @@ class ProjectedAR:
             cv2.imshow("fraem",cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR))
             cv2.imshow("fraem2",cv2.cvtColor(annotated_image2, cv2.COLOR_RGB2BGR))
             self.pcd=self.Triangulate(coord1=coord1,coord2=coord2,pcd=self.pcd,P1=P1,P2=P2)
+            self.populator(np.asarray(self.pcd.points))
             self.vis.update_geometry(self.pcd)
             self.vis.poll_events()
             self.vis.update_renderer()
