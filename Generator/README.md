@@ -29,5 +29,10 @@ this it the output of facial landmark detection given by mediapipe, we can use t
 
 ![Alt text](../Assets/3d_pc.png)
 
+## Loop back of the 3d pcd onto the 3d model
+
+![Alt text](../Assets/loop_back_pcd1.png)
+![Alt text](../Assets/loop_back_pcd2.png)
+
 
 
